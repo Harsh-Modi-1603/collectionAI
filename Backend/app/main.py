@@ -82,4 +82,8 @@ async def generate_collection(ticket: Ticket):
 
 
 
+# health check
+@app.get("/")
+async def root():
+    return {"message": "API is running! Use POST /generate to generate Postman collections."}
 
