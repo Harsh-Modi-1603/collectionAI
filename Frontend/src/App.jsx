@@ -20,7 +20,7 @@ function App() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/generate",
+        "https://collectionai.onrender.com/generate",
         {
           method: "POST",
           headers: {
