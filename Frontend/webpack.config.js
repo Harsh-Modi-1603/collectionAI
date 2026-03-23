@@ -2,44 +2,46 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
-  entry: './src/index.js', // Your main JS file
+  entry: './src/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'main.js',
-    clean: true, // clean old files on build
+    publicPath: '/',
+    clean: true,
   },
   mode: 'development',
   devServer: {
     static: {
-      directory: path.join(__dirname, 'public'), // Serve index.html from public
+      directory: path.join(__dirname, 'public'),
     },
     port: 8080,
     hot: true,
     open: true,
+    historyApiFallback: true,
   },
   module: {
     rules: [
       {
-        test: /\.(js|jsx)$/, // Transpile JS and JSX files
+        test: /\.(js|jsx)$/,
         exclude: /node_modules/,
         use: 'babel-loader',
       },
       {
-        test: /\.css$/i, // Handle CSS imports
+        test: /\.css$/i,
         use: ['style-loader', 'css-loader'],
       },
       {
-        test: /\.(png|jpe?g|gif|svg)$/i, // Handle images
+        test: /\.(png|jpe?g|gif|svg)$/i,
         type: 'asset/resource',
       },
     ],
   },
   resolve: {
-    extensions: ['.js', '.jsx'], // Import without extension
+    extensions: ['.js', '.jsx'],
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: './public/index.html', // HTML template
+      template: './public/index.html',
     }),
   ],
 };
