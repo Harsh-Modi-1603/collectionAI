@@ -105,6 +105,11 @@ async def generate_collection(ticket: Ticket):
 async def root():
     return {"message": "API is running! Use POST /generate to generate Postman collections."}
 
+# Serve frontend static files (if they exist)
+frontend_dist = os.path.join(os.path.dirname(__file__), "..", "..", "Frontend", "dist")
+if os.path.exists(frontend_dist):
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
+
 
 @app.post("/generate-from-tickets", response_model=MultiTicketResponse)
 async def generate_from_tickets(request: MultiTicketRequest):
