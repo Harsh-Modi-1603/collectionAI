@@ -11,3 +11,14 @@ class JiraTicket(BaseModel):
 
 class PostmanRequest(BaseModel):
     api_description: str
+
+from pydantic import Field
+from typing import Optional
+
+class MultiTicketRequest(BaseModel):
+    ticket_ids: list[str] = Field(..., min_length=1, max_length=20)
+    collection_name: Optional[str] = None
+
+class MultiTicketResponse(BaseModel):
+    postman_collection: dict
+    warnings: list[str] = []
