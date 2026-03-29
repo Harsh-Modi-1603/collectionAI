@@ -292,6 +292,14 @@ WHEN TO SET "inferred" AND ADD WARNINGS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 REQUIRED OUTPUT FORMAT (JSON only, no markdown, no explanation)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CRITICAL INSTRUCTIONS:
+1. Output ONLY raw JSON - NO markdown code blocks (```json), NO explanations
+2. Start your response with { and end with }
+3. Do NOT add any text before or after the JSON
+4. Ensure all JSON is valid and properly closed
+
+EXACT FORMAT:
 {
   "flow_steps": [
     {
@@ -315,7 +323,7 @@ REQUIRED OUTPUT FORMAT (JSON only, no markdown, no explanation)
   "warnings": []
 }
 
-NOW GENERATE THE E2E FLOW:"""
+NOW GENERATE THE E2E FLOW (JSON ONLY, NO MARKDOWN):"""
 
     return section1 + section2 + section3 + output_format
 
@@ -337,14 +345,14 @@ def generate_test_cases_comprehensive(ticket_context: dict, catalog: dict | None
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an expert QA engineer. Generate COMPREHENSIVE Postman test suites with EXTENSIVE coverage (MINIMUM 15-25 tests per feature). CRITICAL: For large request bodies, test KEY/REQUIRED fields only (3-5 fields), not every field. Include: 3-5 positive tests, 8-12 negative tests (missing fields, invalid types, invalid values), 2-3 edge cases, 2-3 security tests. Check JIRA comments FIRST for cURL. Set inferred=false for comments/catalog/common/REST patterns. Respond with valid JSON only."
+                    "content": "You are an expert QA engineer. Generate COMPREHENSIVE Postman test suites with EXTENSIVE coverage (MINIMUM 15-25 tests per feature). CRITICAL: For large request bodies, test KEY/REQUIRED fields only (3-5 fields), not every field. Include: 3-5 positive tests, 8-12 negative tests (missing fields, invalid types, invalid values), 2-3 edge cases, 2-3 security tests. Check JIRA comments FIRST for cURL. Set inferred=false for comments/catalog/common/REST patterns. CRITICAL: Respond ONLY with raw JSON - NO markdown, NO code blocks, NO explanations, NO text before or after. Start with { and end with }."
                 },
                 {
                     "role": "user",
                     "content": prompt
                 }
             ],
-            temperature=0.8,  # Slightly higher for more creative/comprehensive generation
+            temperature=0.3,  # Lower temperature for more consistent, valid JSON output
             max_tokens=16000,  # Increased for llama-3.3-70b-versatile (supports up to 32K)
         )
         text = response.choices[0].message.content.strip()
@@ -436,6 +444,35 @@ def generate_test_cases_comprehensive(ticket_context: dict, catalog: dict | None
             if text and not (text.rstrip().endswith('}') or text.rstrip().endswith(']')):
                 print(f"[DEBUG] Response appears truncated (doesn't end with }} or ])")
             print(f"[DEBUG] JSON parse error: {e}")
+            
+            # Try aggressive JSON repair
+            try:
+                # Remove markdown code blocks
+                cleaned = text.replace('```json', '').replace('```', '').strip()
+                
+                # Try to find JSON object or array
+                start_obj = cleaned.find('{')
+                start_arr = cleaned.find('[')
+                
+                if start_obj != -1 and (start_arr == -1 or start_obj < start_arr):
+                    # Try to extract from first { to last }
+                    end = cleaned.rfind('}')
+                    if end != -1:
+                        json_str = cleaned[start_obj:end+1]
+                        result = json.loads(json_str)
+                        print(f"[DEBUG] JSON repair successful (object extraction)")
+                        return result
+                elif start_arr != -1:
+                    # Try to extract from first [ to last ]
+                    end = cleaned.rfind(']')
+                    if end != -1:
+                        json_str = cleaned[start_arr:end+1]
+                        result = json.loads(json_str)
+                        print(f"[DEBUG] JSON repair successful (array extraction)")
+                        return result
+            except Exception as repair_error:
+                print(f"[DEBUG] JSON repair also failed: {repair_error}")
+            
             return None
 
     try:
