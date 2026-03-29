@@ -3,6 +3,7 @@ import os
 import json
 from groq import Groq
 from dotenv import load_dotenv
+from json_repair import repair_json
 
 load_dotenv()
 
@@ -435,45 +436,72 @@ def generate_test_cases_comprehensive(ticket_context: dict, catalog: dict | None
         return text
 
     def _parse(text: str) -> dict | None:
+        # Step 1: Try standard JSON parsing (fast path for valid JSON)
         try:
             extracted = _extract_json(text)
             result = json.loads(extracted)
+            print(f"[DEBUG] Standard JSON parsing successful")
             return result
         except (json.JSONDecodeError, ValueError) as e:
-            # Check if response was truncated
-            if text and not (text.rstrip().endswith('}') or text.rstrip().endswith(']')):
-                print(f"[DEBUG] Response appears truncated (doesn't end with }} or ])")
-            print(f"[DEBUG] JSON parse error: {e}")
+            print(f"[DEBUG] Standard JSON parse failed: {e}")
+        
+        # Step 2: Try manual extraction (handles markdown, finds boundaries)
+        try:
+            # Remove markdown code blocks
+            cleaned = text.replace('```json', '').replace('```', '').strip()
             
-            # Try aggressive JSON repair
-            try:
-                # Remove markdown code blocks
-                cleaned = text.replace('```json', '').replace('```', '').strip()
-                
-                # Try to find JSON object or array
-                start_obj = cleaned.find('{')
-                start_arr = cleaned.find('[')
-                
+            # Try to find JSON object or array
+            start_obj = cleaned.find('{')
+            start_arr = cleaned.find('[')
+            
+            if start_obj != -1 and (start_arr == -1 or start_obj < start_arr):
+                # Try to extract from first { to last }
+                end = cleaned.rfind('}')
+                if end != -1:
+                    json_str = cleaned[start_obj:end+1]
+                    result = json.loads(json_str)
+                    print(f"[DEBUG] Manual extraction successful (object)")
+                    return result
+            elif start_arr != -1:
+                # Try to extract from first [ to last ]
+                end = cleaned.rfind(']')
+                if end != -1:
+                    json_str = cleaned[start_arr:end+1]
+                    result = json.loads(json_str)
+                    print(f"[DEBUG] Manual extraction successful (array)")
+                    return result
+        except Exception as manual_error:
+            print(f"[DEBUG] Manual extraction failed: {manual_error}")
+        
+        # Step 3: Try json-repair library (fixes malformed JSON)
+        try:
+            # Remove markdown first
+            cleaned = text.replace('```json', '').replace('```', '').strip()
+            
+            # Find JSON boundaries
+            start_obj = cleaned.find('{')
+            start_arr = cleaned.find('[')
+            
+            if start_obj != -1 or start_arr != -1:
+                # Extract potential JSON
                 if start_obj != -1 and (start_arr == -1 or start_obj < start_arr):
-                    # Try to extract from first { to last }
-                    end = cleaned.rfind('}')
-                    if end != -1:
-                        json_str = cleaned[start_obj:end+1]
-                        result = json.loads(json_str)
-                        print(f"[DEBUG] JSON repair successful (object extraction)")
-                        return result
-                elif start_arr != -1:
-                    # Try to extract from first [ to last ]
-                    end = cleaned.rfind(']')
-                    if end != -1:
-                        json_str = cleaned[start_arr:end+1]
-                        result = json.loads(json_str)
-                        print(f"[DEBUG] JSON repair successful (array extraction)")
-                        return result
-            except Exception as repair_error:
-                print(f"[DEBUG] JSON repair also failed: {repair_error}")
-            
-            return None
+                    potential_json = cleaned[start_obj:]
+                else:
+                    potential_json = cleaned[start_arr:]
+                
+                # Use json-repair to fix malformed JSON
+                repaired = repair_json(potential_json)
+                result = json.loads(repaired)
+                print(f"[DEBUG] json-repair library successful!")
+                return result
+        except Exception as repair_error:
+            print(f"[DEBUG] json-repair library failed: {repair_error}")
+        
+        # Step 4: All methods failed
+        if text and not (text.rstrip().endswith('}') or text.rstrip().endswith(']')):
+            print(f"[DEBUG] Response appears truncated (doesn't end with }} or ])")
+        
+        return None
 
     try:
         text = _call_groq()
