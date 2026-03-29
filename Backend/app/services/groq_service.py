@@ -526,7 +526,7 @@ def generate_test_cases_comprehensive(ticket_context: dict, catalog: dict | None
             print(f"[DEBUG] Second parse also failed.")
             return {
                 "flow_steps": [],
-                "warnings": [f"{ticket_id}: LLM returned unparseable JSON"],
+                "warnings": [f"{ticket_id}: Unable to generate tests. Please try again."],
             }
         # Ensure required keys exist
         result.setdefault("flow_steps", [])
@@ -534,10 +534,20 @@ def generate_test_cases_comprehensive(ticket_context: dict, catalog: dict | None
         print(f"[DEBUG] Successfully parsed {len(result.get('flow_steps', []))} flow steps")
         return result
     except Exception as e:
+        error_msg = str(e)
         print(f"[DEBUG] Exception during Groq call: {e}")
         import traceback
         traceback.print_exc()
+        
+        # Sanitize error message for user display
+        if "429" in error_msg or "rate_limit" in error_msg.lower():
+            user_friendly_msg = "AI service is temporarily busy. Please try again in a few minutes."
+        elif "timeout" in error_msg.lower():
+            user_friendly_msg = "Request timed out. Please try again."
+        else:
+            user_friendly_msg = "AI generation failed. Please try again."
+        
         return {
             "flow_steps": [],
-            "warnings": [f"{ticket_id}: LLM call failed — {e}"],
+            "warnings": [f"{ticket_id}: {user_friendly_msg}"],
         }

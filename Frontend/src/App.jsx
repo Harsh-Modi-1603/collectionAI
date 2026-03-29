@@ -174,7 +174,16 @@ function App() {
 
         const data = await response.json();
         if (!response.ok) {
-          throw new Error(data.detail || "Failed to refine collection");
+          // Show user-friendly error message
+          const errorMessage = data.detail || "Unable to modify collection. Please try again.";
+          setChatMessages([
+            ...newMessages,
+            {
+              role: "assistant",
+              content: `I'm having trouble modifying the collection right now. ${errorMessage}`,
+            },
+          ]);
+          return;
         }
 
         setCollection(data.refined_collection);
@@ -198,21 +207,28 @@ function App() {
         });
 
         const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.detail || "Chat failed");
+        
+        // Chat endpoint returns success/failure in response body, not HTTP status
+        if (data.success) {
+          setChatMessages([
+            ...newMessages,
+            { role: "assistant", content: data.response },
+          ]);
+        } else {
+          // Show the friendly error message from backend
+          setChatMessages([
+            ...newMessages,
+            { role: "assistant", content: data.response },
+          ]);
         }
-
-        setChatMessages([
-          ...newMessages,
-          { role: "assistant", content: data.response },
-        ]);
       }
     } catch (err) {
+      // Generic fallback for unexpected errors
       setChatMessages([
         ...newMessages,
         {
           role: "assistant",
-          content: `❌ Error: ${err.message}`,
+          content: "I'm having trouble right now. Please try again in a moment.",
         },
       ]);
     } finally {
