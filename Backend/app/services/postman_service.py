@@ -178,11 +178,17 @@ def build_test_suite(ticket_context: dict, flow_steps: list) -> dict:
 
 def assemble_collection(suites: list[dict], collection_name: str | None, ticket_ids: list[str]) -> dict:
     """
-    Merge multiple test suite folders into one Postman Collection v2.1 document.
-    Suites appear in submission order.
+    Merge multiple test suite folders into ONE unified collection.
+    All requests from all tickets are merged into a single flat list (no folders per ticket).
     """
     name = collection_name if collection_name else (ticket_ids[0] if ticket_ids else "Collection")
     description = f"Generated from tickets: {', '.join(ticket_ids)}"
+
+    # Merge all items from all suites into a single flat list
+    all_items = []
+    for suite in suites:
+        items = suite.get("item", [])
+        all_items.extend(items)
 
     return {
         "info": {
@@ -190,5 +196,5 @@ def assemble_collection(suites: list[dict], collection_name: str | None, ticket_
             "description": description,
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
         },
-        "item": suites,
+        "item": all_items,  # Flat list of all requests, no folders
     }

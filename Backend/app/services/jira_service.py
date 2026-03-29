@@ -53,7 +53,7 @@ def fetch_ticket(ticket_id: str) -> dict:
     resp = requests.get(
         url,
         headers=_get_auth_header(),
-        params={"fields": "summary,description,subtasks"},
+        params={"fields": "summary,description,subtasks,comment"},
         timeout=30
     )
     
@@ -64,16 +64,37 @@ def fetch_ticket(ticket_id: str) -> dict:
     resp.raise_for_status()
     
     fields = resp.json().get("fields", {})
+    
+    # Extract comments
+    comments = []
+    comment_data = fields.get("comment", {})
+    if isinstance(comment_data, dict):
+        for comment in comment_data.get("comments", []):
+            body = comment.get("body", "")
+            if isinstance(body, dict):
+                # Extract text from ADF format
+                comment_text = _extract_description({"description": body})
+            else:
+                comment_text = str(body)
+            
+            if comment_text.strip():
+                comments.append({
+                    "author": comment.get("author", {}).get("displayName", "Unknown"),
+                    "body": comment_text.strip(),
+                    "created": comment.get("created", "")
+                })
+    
     return {
         "id": ticket_id,
         "summary": fields.get("summary", ""),
         "description": _extract_description(fields),
+        "comments": comments,
         "raw_subtasks": fields.get("subtasks", []),
     }
 
 
 def fetch_ticket_with_subtasks(ticket_id: str) -> dict:
-    """Fetch a JIRA ticket with all its subtasks using shared API token"""
+    """Fetch a JIRA ticket with all its subtasks and comments using shared API token"""
     ticket = fetch_ticket(ticket_id)
     subtasks = []
     
@@ -104,5 +125,6 @@ def fetch_ticket_with_subtasks(ticket_id: str) -> dict:
         "id": ticket["id"],
         "summary": ticket["summary"],
         "description": ticket["description"],
+        "comments": ticket.get("comments", []),
         "subtasks": subtasks,
     }

@@ -22,3 +22,13 @@ class MultiTicketRequest(BaseModel):
 class MultiTicketResponse(BaseModel):
     postman_collection: dict
     warnings: list[str] = []
+
+
+class ChatRefineRequest(BaseModel):
+    existing_collection: dict
+    user_message: str
+
+
+class ChatRefineResponse(BaseModel):
+    refined_collection: dict
+    message: str
