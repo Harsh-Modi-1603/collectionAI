@@ -5,20 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import google.generativeai as genai
 from dotenv import load_dotenv
 import json
-import sys
 
 # Load environment variables
 load_dotenv()
-
-# Add startup logging
-print("=" * 80, file=sys.stderr)
-print("STARTING COLLECTIONAI BACKEND", file=sys.stderr)
-print("=" * 80, file=sys.stderr)
-print(f"Python version: {sys.version}", file=sys.stderr)
-print(f"PORT env var: {os.getenv('PORT', 'NOT SET')}", file=sys.stderr)
-print(f"GROQ_API_KEY: {'SET' if os.getenv('GROQ_API_KEY') else 'NOT SET'}", file=sys.stderr)
-print(f"SWAGGER_URL: {os.getenv('SWAGGER_URL', 'NOT SET')}", file=sys.stderr)
-print("=" * 80, file=sys.stderr)
 
 from app import config
 from app.services import swagger_service, jira_service, groq_service, postman_service
