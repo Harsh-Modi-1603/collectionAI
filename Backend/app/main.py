@@ -135,6 +135,11 @@ async def generate_from_tickets(request: MultiTicketRequest):
         warnings.extend(llm_result.get("warnings", []))
         flow_steps = llm_result.get("flow_steps", [])
 
+        # Skip if no flow steps were generated (error case)
+        if not flow_steps:
+            failed_ids.append(ticket_id)
+            continue
+
         suite = postman_service.build_test_suite(ticket_context, flow_steps)
         suites.append(suite)
         processed_ids.append(ticket_id)
