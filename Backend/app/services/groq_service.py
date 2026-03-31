@@ -541,7 +541,11 @@ def generate_test_cases_comprehensive(ticket_context: dict, catalog: dict | None
         
         # Sanitize error message for user display
         if "429" in error_msg or "rate_limit" in error_msg.lower():
-            user_friendly_msg = "AI service is temporarily busy. Please try again in a few minutes."
+            # Check if it's a daily limit vs per-minute limit
+            if "tokens per day" in error_msg.lower() or "tpd" in error_msg.lower():
+                user_friendly_msg = "Daily AI usage limit reached. Please try again tomorrow or wait a few hours."
+            else:
+                user_friendly_msg = "AI service is temporarily busy. Please try again in a few minutes."
         elif "timeout" in error_msg.lower():
             user_friendly_msg = "Request timed out. Please try again."
         else:
